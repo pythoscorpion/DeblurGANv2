@@ -12,14 +12,18 @@ from tqdm import tqdm
 from aug import get_normalize
 from models.networks import get_generator
 
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 class Predictor:
     def __init__(self, weights_path: str, model_name: str = ''):
         with open('config/config.yaml',encoding='utf-8') as cfg:
             config = yaml.load(cfg, Loader=yaml.FullLoader)
         model = get_generator(model_name or config['model'])
-        model.load_state_dict(torch.load(weights_path)['model'])
-        self.model = model.cuda()
+        #model.load_state_dict(torch.load(weights_path)['model'])
+        model.load_state_dict(torch.load(weights_path, map_location=torch.device('cpu'))['model'])
+        #self.model = model.cuda()
+        self.model = model
         self.model.train(True)
         # GAN inference should be in train mode to use actual stats in norm layers,
         # it's not a bug
@@ -62,7 +66,8 @@ class Predictor:
     def __call__(self, img: np.ndarray, mask: Optional[np.ndarray], ignore_mask=True) -> np.ndarray:
         (img, mask), h, w = self._preprocess(img, mask)
         with torch.no_grad():
-            inputs = [img.cuda()]
+            #inputs = [img.cuda()]
+            inputs = [img]
             if not ignore_mask:
                 inputs += [mask]
             pred = self.model(*inputs)
@@ -131,12 +136,6 @@ def get_files():
 
 
 
-
-
 if __name__ == '__main__':
-  #  Fire(main)
-#增加批量处理图片：
-    img_path=get_files()
-    for i in img_path:
-        main(i)
-    # main('test_img/tt.mp4')
+    image_path = "test.png"
+    main(image_path)
